@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal — Market Dashboard & Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-primary:#0A0D12;
+    --bg-panel:#12161D;
+    --bg-panel-alt:#171C24;
+    --border:#232933;
+    --border-soft:#1A1F28;
+    --accent:#F2A93B;
+    --accent-dim:#8A6423;
+    --positive:#3ECF8E;
+    --negative:#FF6B6B;
+    --text-primary:#E9EDF2;
+    --text-muted:#8A93A3;
+    --text-faint:#565E6C;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+    --font-body:'Inter', sans-serif;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  html{scroll-behavior:smooth;}
+
+  body{
+    background:var(--bg-primary);
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    min-height:100vh;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(242,169,59,0.06), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(62,207,142,0.04), transparent 40%);
+  }
+
+  a{color:inherit;}
+
+  :focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+
+  /* ---------- Ticker tape ---------- */
+  .ticker-wrap{
+    background:#000;
+    border-bottom:1px solid var(--border);
+    overflow:hidden;
+    white-space:nowrap;
+    position:relative;
+    height:38px;
+    display:flex;
+    align-items:center;
+  }
+  .ticker-wrap::before{
+    content:"LIVE";
+    position:absolute;
+    left:0; top:0; bottom:0;
+    display:flex;
+    align-items:center;
+    padding:0 14px;
+    background:var(--accent);
+    color:#0A0D12;
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.1em;
+    z-index:2;
+  }
+  .ticker-track{
+    display:inline-flex;
+    align-items:center;
+    padding-left:100%;
+    animation:scroll-ticker 32s linear infinite;
+    font-family:var(--font-mono);
+    font-size:13px;
+  }
+  .ticker-track span{
+    padding:0 28px;
+    color:var(--text-muted);
+    border-right:1px solid var(--border-soft);
+  }
+  .ticker-track span b{color:var(--text-primary); font-weight:600; margin-right:8px;}
+  .ticker-track .up{color:var(--positive);}
+  .ticker-track .down{color:var(--negative);}
+  @keyframes scroll-ticker{
+    0%{transform:translateX(0);}
+    100%{transform:translateX(-100%);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .ticker-track{animation:none; padding-left:16px;}
+  }
+
+  /* ---------- Shell ---------- */
+  .shell{
+    max-width:1180px;
+    margin:0 auto;
+    padding:0 28px 100px;
+  }
+
+  header.hero{
+    padding:56px 0 40px;
+    border-bottom:1px solid var(--border-soft);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    flex-wrap:wrap;
+    gap:24px;
+  }
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:0.18em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin-bottom:14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .eyebrow .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--positive);
+    box-shadow:0 0 0 3px rgba(62,207,142,0.15);
+  }
+  h1.title{
+    font-family:var(--font-display);
+    font-size:clamp(40px, 6vw, 64px);
+    font-weight:700;
+    letter-spacing:-0.02em;
+    line-height:1;
+  }
+  .hero-meta{
+    font-family:var(--font-mono);
+    font-size:12.5px;
+    color:var(--text-faint);
+    text-align:right;
+  }
+  .hero-meta div{margin-bottom:4px;}
+  .hero-meta span{color:var(--text-muted);}
+
+  section.block{padding:52px 0 0;}
+  .block-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:22px;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .block-head h2{
+    font-family:var(--font-display);
+    font-size:22px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .block-head .num{
+    font-family:var(--font-mono);
+    color:var(--accent);
+    margin-right:10px;
+    font-weight:400;
+  }
+  .block-head .refresh{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-faint);
+    background:none;
+    border:1px solid var(--border);
+    padding:7px 12px;
+    border-radius:6px;
+    cursor:pointer;
+    letter-spacing:0.04em;
+    transition:border-color .15s, color .15s;
+  }
+  .block-head .refresh:hover{border-color:var(--accent); color:var(--accent);}
+
+  /* ---------- Market cards ---------- */
+  .market-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:14px;
+  }
+  .market-card{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:22px 22px 20px;
+    position:relative;
+    overflow:hidden;
+  }
+  .market-card::after{
+    content:"";
+    position:absolute; left:0; top:0; bottom:0;
+    width:3px;
+    background:var(--positive);
+  }
+  .market-card.is-down::after{background:var(--negative);}
+  .market-card .name{
+    font-family:var(--font-body);
+    font-size:13.5px;
+    color:var(--text-muted);
+    margin-bottom:14px;
+    font-weight:500;
+  }
+  .market-card .price{
+    font-family:var(--font-mono);
+    font-size:28px;
+    font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .market-card .change{
+    font-family:var(--font-mono);
+    font-size:14px;
+    margin-top:8px;
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+  }
+  .market-card .change.up{color:var(--positive);}
+  .market-card .change.down{color:var(--negative);}
+
+  .skeleton{
+    background:linear-gradient(90deg, var(--bg-panel-alt) 25%, #1c222c 37%, var(--bg-panel-alt) 63%);
+    background-size:400% 100%;
+    animation:shimmer 1.4s ease infinite;
+    border-radius:6px;
+  }
+  @keyframes shimmer{
+    0%{background-position:100% 50%;}
+    100%{background-position:0 50%;}
+  }
+  @media (prefers-reduced-motion: reduce){.skeleton{animation:none;}}
+
+  .state-msg{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--text-faint);
+    padding:20px 0;
+  }
+  .state-msg.error{color:var(--negative);}
+
+  /* ---------- News ---------- */
+  .news-list{display:flex; flex-direction:column; gap:0;}
+  .news-item{
+    display:grid;
+    grid-template-columns:76px 1fr auto;
+    gap:18px;
+    align-items:start;
+    padding:18px 4px;
+    border-bottom:1px solid var(--border-soft);
+    text-decoration:none;
+    transition:background .15s;
+  }
+  .news-item:hover{background:var(--bg-panel-alt);}
+  .news-item:last-child{border-bottom:none;}
+  .news-idx{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-faint);
+    padding-top:3px;
+  }
+  .news-body h3{
+    font-family:var(--font-body);
+    font-size:15px;
+    font-weight:500;
+    line-height:1.45;
+    color:var(--text-primary);
+    margin-bottom:6px;
+  }
+  .news-body .src{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-faint);
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .news-arrow{
+    font-family:var(--font-mono);
+    color:var(--text-faint);
+    padding-top:4px;
+  }
+
+  /* ---------- RAG / Agent ---------- */
+  .agent-panel{
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .agent-top{
+    padding:20px 24px;
+    border-bottom:1px solid var(--border-soft);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--bg-panel-alt);
+  }
+  .agent-top .idle{
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-faint);
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+  .agent-top .idle .dot{width:6px; height:6px; border-radius:50%; background:var(--text-faint);}
+  .agent-top .idle.busy .dot{background:var(--accent); box-shadow:0 0 0 3px rgba(242,169,59,0.15);}
+
+  .agent-log{
+    padding:24px;
+    min-height:220px;
+    max-height:460px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .agent-log::-webkit-scrollbar{width:8px;}
+  .agent-log::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px;}
+
+  .agent-empty{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--text-faint);
+    padding:30px 0;
+    text-align:center;
+    line-height:1.7;
+  }
+  .agent-empty .suggestions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+    margin-top:16px;
+  }
+  .agent-empty .suggestions button{
+    font-family:var(--font-body);
+    font-size:12.5px;
+    color:var(--text-muted);
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    padding:8px 14px;
+    border-radius:20px;
+    cursor:pointer;
+    transition:border-color .15s, color .15s;
+  }
+  .agent-empty .suggestions button:hover{border-color:var(--accent); color:var(--accent);}
+
+  .msg{max-width:78%; display:flex; flex-direction:column; gap:6px;}
+  .msg.user{align-self:flex-end; align-items:flex-end;}
+  .msg.agent{align-self:flex-start; align-items:flex-start;}
+  .msg .label{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    color:var(--text-faint);
+    text-transform:uppercase;
+  }
+  .msg .bubble{
+    padding:12px 16px;
+    border-radius:10px;
+    font-size:14.5px;
+    line-height:1.6;
+  }
+  .msg.user .bubble{
+    background:var(--accent);
+    color:#0A0D12;
+    font-weight:500;
+    border-bottom-right-radius:2px;
+  }
+  .msg.agent .bubble{
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    border-bottom-left-radius:2px;
+    white-space:pre-wrap;
+  }
+  .msg.agent .bubble.error{color:var(--negative); border-color:rgba(255,107,107,0.3);}
+
+  .typing{
+    display:inline-flex;
+    gap:4px;
+    padding:12px 16px;
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius:10px;
+    border-bottom-left-radius:2px;
+  }
+  .typing span{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--text-faint);
+    animation:bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2){animation-delay:.15s;}
+  .typing span:nth-child(3){animation-delay:.3s;}
+  @keyframes bounce{
+    0%, 60%, 100%{transform:translateY(0); opacity:.5;}
+    30%{transform:translateY(-4px); opacity:1;}
+  }
+  @media (prefers-reduced-motion: reduce){.typing span{animation:none;}}
+
+  .agent-input-row{
+    display:flex;
+    gap:10px;
+    padding:18px 24px 24px;
+    border-top:1px solid var(--border-soft);
+  }
+  .agent-input-row input{
+    flex:1;
+    background:var(--bg-panel-alt);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:13px 16px;
+    color:var(--text-primary);
+    font-family:var(--font-body);
+    font-size:14.5px;
+  }
+  .agent-input-row input::placeholder{color:var(--text-faint);}
+  .agent-input-row input:focus{border-color:var(--accent);}
+  .agent-input-row button{
+    font-family:var(--font-mono);
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:0.03em;
+    background:var(--accent);
+    color:#0A0D12;
+    border:none;
+    border-radius:8px;
+    padding:0 22px;
+    cursor:pointer;
+    transition:opacity .15s;
+  }
+  .agent-input-row button:hover{opacity:0.88;}
+  .agent-input-row button:disabled{opacity:0.4; cursor:not-allowed;}
+
+  footer{
+    margin-top:70px;
+    padding-top:24px;
+    border-top:1px solid var(--border-soft);
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--text-faint);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+
+  @media (max-width:640px){
+    .shell{padding:0 18px 70px;}
+    header.hero{padding:40px 0 30px;}
+    .hero-meta{text-align:left;}
+    .news-item{grid-template-columns:32px 1fr; }
+    .news-arrow{display:none;}
+    .msg{max-width:90%;}
+  }
+</style>
+</head>
+<body>
+
+  <div class="ticker-wrap">
+    <div class="ticker-track" id="tickerTrack">
+      <span><b>SYS</b>connecting to market feed…</span>
+    </div>
+  </div>
+
+  <div class="shell">
+
+    <header class="hero">
+      <div>
+        <div class="eyebrow"><span class="dot"></span>Market Intelligence Terminal</div>
+        <h1 class="title">Dashboard</h1>
+      </div>
+      <div class="hero-meta">
+        <div>Session <span id="sessionTime">—</span></div>
+        <div>Source <span>market_service · news_service</span></div>
+      </div>
+    </header>
+
+    <!-- ============ MARKET OVERVIEW ============ -->
+    <section class="block" id="market">
+      <div class="block-head">
+        <h2><span class="num">01</span>Market Overview</h2>
+        <button class="refresh" id="refreshMarket">↻ Refresh</button>
+      </div>
+      <div class="market-grid" id="marketGrid">
+        <div class="skeleton" style="height:112px;"></div>
+        <div class="skeleton" style="height:112px;"></div>
+        <div class="skeleton" style="height:112px;"></div>
+      </div>
+    </section>
+
+    <!-- ============ NEWS ============ -->
+    <section class="block" id="news">
+      <div class="block-head">
+        <h2><span class="num">02</span>Latest Headlines</h2>
+        <button class="refresh" id="refreshNews">↻ Refresh</button>
+      </div>
+      <div class="news-list" id="newsList">
+        <div class="state-msg">Loading headlines…</div>
+      </div>
+    </section>
+
+    <!-- ============ RAG AGENT ============ -->
+    <section class="block" id="rag">
+      <div class="block-head">
+        <h2><span class="num">03</span>RAG — Ask the Financial Agent</h2>
+      </div>
+
+      <div class="agent-panel">
+        <div class="agent-top">
+          <div class="eyebrow" style="margin:0;"><span class="dot"></span>financial_agent</div>
+          <div class="idle" id="agentStatus"><span class="dot"></span>idle</div>
+        </div>
+
+        <div class="agent-log" id="agentLog">
+          <div class="agent-empty" id="agentEmpty">
+            Ask a question about the market, a company, or recent news.<br>
+            The agent retrieves live data before it answers.
+            <div class="suggestions">
+              <button data-q="What is today's S&amp;P 500 change and why?">S&amp;P 500 today, and why</button>
+              <button data-q="Summarize the latest news on the stock market.">Latest market news</button>
+              <button data-q="How is the Dow Jones performing this week?">Dow Jones this week</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="agent-input-row">
+          <input type="text" id="agentInput" placeholder="Ask about a stock, index, or headline…" autocomplete="off">
+          <button id="agentSend">Ask</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div>Terminal build 1.0</div>
+      <div>Endpoints: GET /dashboard · POST /ask</div>
+    </footer>
+
+  </div>
+
+<script>
+  // ---------------------------------------------------------------
+  // Configuration — adjust if your API is mounted under a prefix
+  // (e.g. "/api") or a different host.
+  // ---------------------------------------------------------------
+  const API_BASE = '';
+  const DASHBOARD_ENDPOINT = API_BASE + '/dashboard';
+  const ASK_ENDPOINT = API_BASE + '/ask';
+
+  const fmt = (n) => (typeof n === 'number' ? n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : n);
+
+  document.getElementById('sessionTime').textContent = new Date().toLocaleString('en-US', {
+    hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short'
+  });
+
+  // ---------------------------------------------------------------
+  // Normalizers — the dashboard payload shape can vary depending on
+  // how dashboard_service composes market_service + news_service,
+  // so we accept a few common shapes gracefully.
+  // ---------------------------------------------------------------
+  function extractMarket(payload){
+    if (Array.isArray(payload)) return payload;
+    if (payload?.market) return payload.market;
+    if (payload?.markets) return payload.markets;
+    if (payload?.market_overview) return payload.market_overview;
+    return [];
+  }
+  function extractNews(payload){
+    if (payload?.news) return payload.news;
+    if (payload?.latest_news) return payload.latest_news;
+    if (payload?.headlines) return payload.headlines;
+    return [];
+  }
+
+  // ---------------------------------------------------------------
+  // Market overview
+  // ---------------------------------------------------------------
+  async function loadMarket(){
+    const grid = document.getElementById('marketGrid');
+    grid.innerHTML = `<div class="skeleton" style="height:112px;"></div>
+                       <div class="skeleton" style="height:112px;"></div>
+                       <div class="skeleton" style="height:112px;"></div>`;
+    try{
+      const res = await fetch(DASHBOARD_ENDPOINT);
+      if (!res.ok) throw new Error('Status ' + res.status);
+      const payload = await res.json();
+      const rows = extractMarket(payload);
+      renderMarket(rows);
+      renderTicker(rows);
+      const news = extractNews(payload);
+      if (news.length) renderNews(news);
+      else loadNewsFallback();
+    }catch(err){
+      grid.innerHTML = `<div class="state-msg error">Could not reach the dashboard feed (${err.message}). Check the API is running and reachable at ${DASHBOARD_ENDPOINT}.</div>`;
+      document.getElementById('tickerTrack').innerHTML = '<span><b>SYS</b>market feed unavailable</span>';
+    }
+  }
+
+  function renderMarket(rows){
+    const grid = document.getElementById('marketGrid');
+    if (!rows.length){
+      grid.innerHTML = '<div class="state-msg">No market data returned.</div>';
+      return;
+    }
+    grid.innerHTML = rows.map(r => {
+      const change = Number(r.change_percent ?? r.change ?? 0);
+      const isDown = change < 0;
+      return `
+        <div class="market-card ${isDown ? 'is-down':''}">
+          <div class="name">${r.name ?? r.ticker ?? '—'}</div>
+          <div class="price">${fmt(Number(r.price ?? r.close ?? 0))}</div>
+          <div class="change ${isDown ? 'down':'up'}">${isDown ? '▼' : '▲'} ${Math.abs(change).toFixed(2)}%</div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderTicker(rows){
+    const track = document.getElementById('tickerTrack');
+    if (!rows.length) return;
+    const doubled = rows.concat(rows).concat(rows);
+    track.innerHTML = doubled.map(r => {
+      const change = Number(r.change_percent ?? r.change ?? 0);
+      const isDown = change < 0;
+      return `<span><b>${r.name ?? r.ticker}</b>${fmt(Number(r.price ?? r.close ?? 0))} <span class="${isDown?'down':'up'}">${isDown?'▼':'▲'}${Math.abs(change).toFixed(2)}%</span></span>`;
+    }).join('');
+  }
+
+  // ---------------------------------------------------------------
+  // News
+  // ---------------------------------------------------------------
+  async function loadNewsFallback(){
+    // If /dashboard doesn't embed news, we still show a friendly state
+    // rather than guessing at a separate endpoint that may not exist.
+    const list = document.getElementById('newsList');
+    if (list.dataset.filled) return;
+    list.innerHTML = '<div class="state-msg">No headlines included in the dashboard response.</div>';
+  }
+
+  function renderNews(items){
+    const list = document.getElementById('newsList');
+    if (!items.length){
+      list.innerHTML = '<div class="state-msg">No headlines available right now.</div>';
+      return;
+    }
+    list.dataset.filled = '1';
+    list.innerHTML = items.map((item, i) => {
+      const title = item.title ?? item.headline ?? 'Untitled';
+      const url = item.url ?? item.link ?? '#';
+      const publisher = item.publisher?.title ?? item.publisher ?? item.source ?? 'Unknown source';
+      return `
+        <a class="news-item" href="${url}" target="_blank" rel="noopener">
+          <span class="news-idx">${String(i+1).padStart(2,'0')}</span>
+          <div class="news-body">
+            <h3>${title}</h3>
+            <span class="src">${publisher}</span>
+          </div>
+          <span class="news-arrow">→</span>
+        </a>`;
+    }).join('');
+  }
+
+  // ---------------------------------------------------------------
+  // RAG / Agent chat
+  // ---------------------------------------------------------------
+  const agentLog = document.getElementById('agentLog');
+  const agentEmpty = document.getElementById('agentEmpty');
+  const agentInput = document.getElementById('agentInput');
+  const agentSend = document.getElementById('agentSend');
+  const agentStatus = document.getElementById('agentStatus');
+
+  function setBusy(isBusy){
+    agentStatus.classList.toggle('busy', isBusy);
+    agentStatus.innerHTML = isBusy
+      ? '<span class="dot"></span>retrieving…'
+      : '<span class="dot"></span>idle';
+    agentSend.disabled = isBusy;
+    agentInput.disabled = isBusy;
+  }
+
+  function addUserMessage(text){
+    if (agentEmpty) agentEmpty.remove();
+    const el = document.createElement('div');
+    el.className = 'msg user';
+    el.innerHTML = `<span class="label">You</span><div class="bubble"></div>`;
+    el.querySelector('.bubble').textContent = text;
+    agentLog.appendChild(el);
+    agentLog.scrollTop = agentLog.scrollHeight;
+  }
+
+  function addTyping(){
+    const el = document.createElement('div');
+    el.className = 'msg agent';
+    el.id = 'typingIndicator';
+    el.innerHTML = `<span class="label">Agent</span><div class="typing"><span></span><span></span><span></span></div>`;
+    agentLog.appendChild(el);
+    agentLog.scrollTop = agentLog.scrollHeight;
+  }
+
+  function removeTyping(){
+    document.getElementById('typingIndicator')?.remove();
+  }
+
+  function addAgentMessage(text, isError=false){
+    const el = document.createElement('div');
+    el.className = 'msg agent';
+    el.innerHTML = `<span class="label">Agent</span><div class="bubble ${isError?'error':''}"></div>`;
+    el.querySelector('.bubble').textContent = text;
+    agentLog.appendChild(el);
+    agentLog.scrollTop = agentLog.scrollHeight;
+  }
+
+  async function askAgent(question){
+    if (!question.trim()) return;
+    addUserMessage(question);
+    agentInput.value = '';
+    setBusy(true);
+    addTyping();
+    try{
+      const res = await fetch(ASK_ENDPOINT, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({question})
+      });
+      const data = await res.json().catch(()=>({}));
+      removeTyping();
+      if (!res.ok){
+        addAgentMessage(data.detail ?? `The agent returned an error (status ${res.status}).`, true);
+      }else{
+        addAgentMessage(data.answer ?? 'The agent returned an empty answer.');
+      }
+    }catch(err){
+      removeTyping();
+      addAgentMessage(`Could not reach the agent at ${ASK_ENDPOINT}. ${err.message}`, true);
+    }finally{
+      setBusy(false);
+      agentInput.focus();
+    }
+  }
+
+  agentSend.addEventListener('click', () => askAgent(agentInput.value));
+  agentInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') askAgent(agentInput.value);
+  });
+  document.querySelectorAll('.agent-empty .suggestions button').forEach(btn => {
+    btn.addEventListener('click', () => askAgent(btn.dataset.q));
+  });
+
+  document.getElementById('refreshMarket').addEventListener('click', loadMarket);
+  document.getElementById('refreshNews').addEventListener('click', loadMarket);
+
+  loadMarket();
+</script>
+
+</body>
+</html>
