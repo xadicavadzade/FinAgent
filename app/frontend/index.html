@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terminal — Market Dashboard & Agent</title>
+<title>FinAgent — Financial Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -105,7 +105,7 @@
   }
 
   header.hero{
-    padding:56px 0 40px;
+    padding:80px 0 40px;
     border-bottom:1px solid var(--border-soft);
     display:flex;
     justify-content:space-between;
@@ -286,7 +286,7 @@
     padding-top:4px;
   }
 
-  /* ---------- RAG / Agent ---------- */
+  /* ---------- AI Agent ---------- */
   .agent-panel{
     background:var(--bg-panel);
     border:1px solid var(--border);
@@ -454,7 +454,7 @@
 
   @media (max-width:640px){
     .shell{padding:0 18px 70px;}
-    header.hero{padding:40px 0 30px;}
+    header.hero{padding:60px 0 30px;}
     .hero-meta{text-align:left;}
     .news-item{grid-template-columns:32px 1fr; }
     .news-arrow{display:none;}
@@ -474,12 +474,12 @@
 
     <header class="hero">
       <div>
-        <div class="eyebrow"><span class="dot"></span>Market Intelligence Terminal</div>
-        <h1 class="title">Dashboard</h1>
+        <div class="eyebrow"><span class="dot"></span>AI Financial Platform</div>
+        <h1 class="title">FinAgent</h1>
       </div>
       <div class="hero-meta">
         <div>Session <span id="sessionTime">—</span></div>
-        <div>Source <span>market_service · news_service</span></div>
+        <div>Source <span>FastAPI · LangChain · Yahoo Finance</span></div>
       </div>
     </header>
 
@@ -507,52 +507,50 @@
       </div>
     </section>
 
-    <!-- ============ RAG AGENT ============ -->
+    <!-- ============ AI FINANCIAL ASSISTANT ============ -->
     <section class="block" id="rag">
       <div class="block-head">
-        <h2><span class="num">03</span>RAG — Ask the Financial Agent</h2>
+        <h2><span class="num">03</span>AI Financial Assistant</h2>
       </div>
 
       <div class="agent-panel">
         <div class="agent-top">
-          <div class="eyebrow" style="margin:0;"><span class="dot"></span>financial_agent</div>
+          <div class="eyebrow" style="margin:0;"><span class="dot"></span>FinAgent AI</div>
           <div class="idle" id="agentStatus"><span class="dot"></span>idle</div>
         </div>
 
         <div class="agent-log" id="agentLog">
           <div class="agent-empty" id="agentEmpty">
-            Ask a question about the market, a company, or recent news.<br>
-            The agent retrieves live data before it answers.
+            Ask any financial question. The AI agent retrieves real-time market data before generating a response.
             <div class="suggestions">
-              <button data-q="What is today's S&amp;P 500 change and why?">S&amp;P 500 today, and why</button>
-              <button data-q="Summarize the latest news on the stock market.">Latest market news</button>
-              <button data-q="How is the Dow Jones performing this week?">Dow Jones this week</button>
+              <button data-q="Analyze Apple stock for me">Analyze Apple</button>
+              <button data-q="Should I invest in NVIDIA right now?">Should I invest in NVIDIA?</button>
+              <button data-q="Show Microsoft's financial metrics">Microsoft's financials</button>
             </div>
           </div>
         </div>
 
         <div class="agent-input-row">
-          <input type="text" id="agentInput" placeholder="Ask about a stock, index, or headline…" autocomplete="off">
+          <input type="text" id="agentInput" placeholder="Ask about a company, stock, or financial news…" autocomplete="off">
           <button id="agentSend">Ask</button>
         </div>
       </div>
     </section>
 
     <footer>
-      <div>Terminal build 1.0</div>
-      <div>Endpoints: GET /dashboard · POST /ask</div>
+      <div>FinAgent v1.0</div>
+      <div>Powered by FastAPI · LangChain · Groq · Yahoo Finance</div>
     </footer>
 
   </div>
 
 <script>
   // ---------------------------------------------------------------
-  // Configuration — adjust if your API is mounted under a prefix
-  // (e.g. "/api") or a different host.
+  // Configuration — FastAPI backend endpoints
   // ---------------------------------------------------------------
-  const API_BASE = '';
-  const DASHBOARD_ENDPOINT = API_BASE + '/dashboard';
-  const ASK_ENDPOINT = API_BASE + '/ask';
+  const API_BASE = "http://127.0.0.1:8000/api/v1";
+  const DASHBOARD_ENDPOINT = `${API_BASE}/dashboard`;
+  const ASK_ENDPOINT = `${API_BASE}/ask`;
 
   const fmt = (n) => (typeof n === 'number' ? n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : n);
 
@@ -561,22 +559,14 @@
   });
 
   // ---------------------------------------------------------------
-  // Normalizers — the dashboard payload shape can vary depending on
-  // how dashboard_service composes market_service + news_service,
-  // so we accept a few common shapes gracefully.
+  // Normalizers — extract market and news data from API response
   // ---------------------------------------------------------------
   function extractMarket(payload){
-    if (Array.isArray(payload)) return payload;
-    if (payload?.market) return payload.market;
-    if (payload?.markets) return payload.markets;
-    if (payload?.market_overview) return payload.market_overview;
-    return [];
+    return payload.market_overview || [];
   }
+
   function extractNews(payload){
-    if (payload?.news) return payload.news;
-    if (payload?.latest_news) return payload.latest_news;
-    if (payload?.headlines) return payload.headlines;
-    return [];
+    return payload.latest_news || [];
   }
 
   // ---------------------------------------------------------------
@@ -610,12 +600,12 @@
       return;
     }
     grid.innerHTML = rows.map(r => {
-      const change = Number(r.change_percent ?? r.change ?? 0);
+      const change = Number(r.change_percent);
       const isDown = change < 0;
       return `
         <div class="market-card ${isDown ? 'is-down':''}">
-          <div class="name">${r.name ?? r.ticker ?? '—'}</div>
-          <div class="price">${fmt(Number(r.price ?? r.close ?? 0))}</div>
+          <div class="name">${r.name}</div>
+          <div class="price">${fmt(Number(r.price))}</div>
           <div class="change ${isDown ? 'down':'up'}">${isDown ? '▼' : '▲'} ${Math.abs(change).toFixed(2)}%</div>
         </div>`;
     }).join('');
@@ -626,9 +616,9 @@
     if (!rows.length) return;
     const doubled = rows.concat(rows).concat(rows);
     track.innerHTML = doubled.map(r => {
-      const change = Number(r.change_percent ?? r.change ?? 0);
+      const change = Number(r.change_percent);
       const isDown = change < 0;
-      return `<span><b>${r.name ?? r.ticker}</b>${fmt(Number(r.price ?? r.close ?? 0))} <span class="${isDown?'down':'up'}">${isDown?'▼':'▲'}${Math.abs(change).toFixed(2)}%</span></span>`;
+      return `<span><b>${r.name}</b>${fmt(Number(r.price))} <span class="${isDown?'down':'up'}">${isDown?'▼':'▲'}${Math.abs(change).toFixed(2)}%</span></span>`;
     }).join('');
   }
 
@@ -636,8 +626,6 @@
   // News
   // ---------------------------------------------------------------
   async function loadNewsFallback(){
-    // If /dashboard doesn't embed news, we still show a friendly state
-    // rather than guessing at a separate endpoint that may not exist.
     const list = document.getElementById('newsList');
     if (list.dataset.filled) return;
     list.innerHTML = '<div class="state-msg">No headlines included in the dashboard response.</div>';
@@ -651,9 +639,9 @@
     }
     list.dataset.filled = '1';
     list.innerHTML = items.map((item, i) => {
-      const title = item.title ?? item.headline ?? 'Untitled';
-      const url = item.url ?? item.link ?? '#';
-      const publisher = item.publisher?.title ?? item.publisher ?? item.source ?? 'Unknown source';
+      const title = item.title;
+      const url = item.url;
+      const publisher = item.publisher;
       return `
         <a class="news-item" href="${url}" target="_blank" rel="noopener">
           <span class="news-idx">${String(i+1).padStart(2,'0')}</span>
@@ -667,7 +655,7 @@
   }
 
   // ---------------------------------------------------------------
-  // RAG / Agent chat
+  // AI Agent chat
   // ---------------------------------------------------------------
   const agentLog = document.getElementById('agentLog');
   const agentEmpty = document.getElementById('agentEmpty');
