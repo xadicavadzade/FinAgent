@@ -633,6 +633,7 @@
 
   function renderNews(items){
     const list = document.getElementById('newsList');
+    items = items.slice(0,8);
     if (!items.length){
       list.innerHTML = '<div class="state-msg">No headlines available right now.</div>';
       return;
@@ -641,7 +642,12 @@
     list.innerHTML = items.map((item, i) => {
       const title = item.title;
       const url = item.url;
-      const publisher = item.publisher;
+      const publisher = 
+          item.publisher?.title ??
+          item.publisher?.name ??
+          item.publisher ??
+          item.source ??
+          "";
       return `
         <a class="news-item" href="${url}" target="_blank" rel="noopener">
           <span class="news-idx">${String(i+1).padStart(2,'0')}</span>
@@ -716,6 +722,13 @@
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({question})
       });
+
+      console.log("Status:", res.status);
+      console.log("URL:", ASK_ENDPOINT);
+
+      const responseText = await res.clone().text();
+      console.log("Raw Response:", responseText);
+
       const data = await res.json().catch(()=>({}));
       removeTyping();
       if (!res.ok){
