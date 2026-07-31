@@ -7,7 +7,7 @@ router = APIRouter()
 
 
 @router.post(
-    "",
+     "/ask",
     response_model=AskResponse,
 )
 def ask(request: AskRequest):
