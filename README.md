@@ -1,72 +1,97 @@
 # FinAgent
 
-FinAgent is an AI-powered financial assistant built with **FastAPI**, **LangChain**, **Groq LLM**, and **Yahoo Finance**. The application provides a real-time financial dashboard and an AI assistant capable of answering investment-related questions using live financial data.
+An AI-powered financial assistant built with **FastAPI**, **LangChain**, **Groq LLM**, and **Yahoo Finance**.
+
+FinAgent combines a real-time financial dashboard with an intelligent AI agent capable of answering investment and stock market questions using live financial data.
+
+---
+
+## Live Demo
+
+### Frontend
+
+https://finance-agent-4.netlify.app/
+
+### Backend API
+
+https://finagent-sp3u.onrender.com/
+
+### Swagger Documentation
+
+https://finagent-sp3u.onrender.com/docs
 
 ---
 
 ## Features
 
+- Real-Time Financial Dashboard
 - AI Financial Assistant
-- Financial Dashboard
-- Real-Time Market Overview
 - Latest Financial News
-- Company Information
+- Live Market Overview
+- Company Information Lookup
 - Stock Price Lookup
-- Financial Metrics
-- Technical Analysis (SMA20, SMA50, RSI)
+- Financial Metrics Analysis
+- LangChain Tool Calling
 - REST API
 - Docker Support
 
 ---
 
-## Dashboard
+## Application
+
+### Dashboard
 
 The dashboard provides a quick overview of the financial market before interacting with the AI assistant.
 
-### Available Widgets
-
-- Market Overview
+- Live Market Overview
 - Latest Financial News
 
----
+### AI Assistant
 
-## AI Assistant
-
-Users can ask natural language questions such as:
-
-- Should I invest in Apple?
-- Analyze Tesla stock.
-- What is NVIDIA's market cap?
-- Show Microsoft's financial metrics.
-- What is happening in today's market?
-
-The AI agent automatically selects the appropriate tool, retrieves real-time financial information, and generates a concise response.
-
----
-
-## Architecture
+Ask natural language questions such as:
 
 ```text
-                           User
-                             │
-          ┌──────────────────┴──────────────────┐
-          │                                     │
-          ▼                                     ▼
-    Dashboard API                         Ask AI API
-          │                                     │
-          ▼                                     ▼
- Dashboard Service                   LangChain Financial Agent
-                                                │
-                           ┌────────────────────┼────────────────────┐
-                           ▼                    ▼                    ▼
-                    Company Tool          Market Tool          News Tool
-                           │                    │                    │
-                           └──────────────┬─────┴──────────────┬─────┘
-                                          ▼
+Should I invest in Apple?
+
+Analyze Tesla stock.
+
+What is NVIDIA's market cap?
+
+Show Microsoft's financial metrics.
+
+What is happening in today's market?
+```
+
+The AI agent automatically selects the appropriate tool, retrieves live financial data, and generates concise responses.
+
+---
+
+## System Architecture
+
+```text
+                              User
+                                │
+               ┌────────────────┴────────────────┐
+               │                                 │
+               ▼                                 ▼
+        Dashboard API                      Ask AI API
+               │                                 │
+               ▼                                 ▼
+      Dashboard Service                 LangChain Agent
+                                                 │
+                          ┌──────────────────────┼──────────────────────┐
+                          ▼                      ▼                      ▼
+                  Company Tool           Market Tool             News Tool
+                          │                      │                      │
+                          └──────────────┬───────┴──────────────┬───────┘
+                                         ▼
                                    Service Layer
-                                          │
-                                          ▼
-                                   Yahoo Finance
+                                         │
+                                         ▼
+                             Yahoo Finance + Google News
+                                         │
+                                         ▼
+                                     Groq LLM
 ```
 
 ---
@@ -74,12 +99,27 @@ The AI agent automatically selects the appropriate tool, retrieves real-time fin
 ## Project Structure
 
 ```text
-app/
-├── agent/          # LangChain agent, prompts and LLM
-├── api/            # FastAPI endpoints
-├── schemas/        # Pydantic models
-├── services/       # Business logic
-├── tools/          # LangChain tools
+app
+│
+├── agent
+│   ├── agent.py
+│   ├── llm.py
+│   ├── prompts.py
+│   └── tools.py
+│
+├── api
+│   ├── ask.py
+│   └── dashboard.py
+│
+├── schemas
+│
+├── services
+│   ├── company_service.py
+│   ├── financial_service.py
+│   ├── market_service.py
+│   └── news_service.py
+│
+├── config.py
 └── main.py
 ```
 
@@ -87,7 +127,7 @@ app/
 
 ## Request Flow
 
-### Dashboard Flow
+### Dashboard
 
 ```text
 Client
@@ -98,39 +138,49 @@ Dashboard API
    ▼
 Dashboard Service
    │
-   ▼
-Yahoo Finance
+   ├────────────► Yahoo Finance
+   │
+   └────────────► Google News
    │
    ▼
 JSON Response
 ```
 
-### AI Assistant Flow
+### AI Assistant
 
 ```text
 Client
    │
    ▼
-Ask AI API
+Ask API
    │
    ▼
-Financial Agent
+LangChain Agent
    │
    ▼
-Tool Selection
+Automatic Tool Selection
    │
    ▼
-LangChain Tool
-   │
-   ▼
-Service Layer
+Financial Services
    │
    ▼
 Yahoo Finance
    │
    ▼
-LLM Response
+Groq LLM
+   │
+   ▼
+Answer
 ```
+
+---
+
+## REST API
+
+| Method | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/api/v1/dashboard` | Returns market overview and latest news |
+| POST | `/api/v1/ask` | Ask the AI financial assistant |
 
 ---
 
@@ -139,38 +189,52 @@ LLM Response
 - Python
 - FastAPI
 - LangChain
-- Groq
+- Groq LLM
 - Yahoo Finance
+- Google News
 - Pydantic
 - Docker
 
 ---
 
-## Getting Started
+## Installation
 
-### Install Dependencies
+Clone the repository:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/finagent.git
+
+cd finagent
+```
+
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Run the Application
+Create a `.env` file:
+
+```env
+GROQ_API_KEY=YOUR_API_KEY
+MODEL_NAME=openai/gpt-oss-20b
+```
+
+Run the application:
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-The API will be available at:
+Open:
 
 ```text
-http://localhost:8000
+http://localhost:8000/docs
 ```
 
 ---
 
 ## Docker
-
-Build and run the application:
 
 ```bash
 docker compose up --build
@@ -178,14 +242,28 @@ docker compose up --build
 
 ---
 
-## Future Improvements
+## Roadmap
 
-- React Dashboard
 - Portfolio Analysis
 - Watchlist Management
 - Interactive Stock Charts
-- Multi-Agent Architecture
 - Financial Report Analysis (RAG)
+- Multi-Agent Financial Assistant
+- Multi-LLM Support (Groq, Gemini, OpenAI)
 
+---
 
+## Future Improvements
 
+- Authentication
+- Conversation Memory
+- Vector Database Integration
+- Company Report Analysis
+- Streaming Responses
+- Deployment Monitoring
+
+---
+
+## License
+
+This project is intended for educational and portfolio purposes.
